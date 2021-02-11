@@ -55,11 +55,13 @@ func getOrCreateNilNode() (*core.IpfsNode, error) {
 // Add builds a merkledag node from a reader, adds it to the blockstore,
 // and returns the key representing that node.
 func (api *UnixfsAPI) Add(ctx context.Context, files files.Node, opts ...options.UnixfsAddOption) (path.Resolved, error) {
+	fmt.Println("before add")
 	settings, prefix, err := options.UnixfsAddOptions(opts...)
 	if err != nil {
 		return nil, err
 	}
 
+	fmt.Println("before config")
 	cfg, err := api.repo.Config()
 	if err != nil {
 		return nil, err
@@ -77,6 +79,7 @@ func (api *UnixfsAPI) Add(ctx context.Context, files files.Node, opts ...options
 		return nil, fmt.Errorf("either the filestore or the urlstore must be enabled to use nocopy, see: https://git.io/vNItf")
 	}
 
+	fmt.Println("before blockstore")
 	addblockstore := api.blockstore
 	if !(settings.FsCache || settings.NoCopy) {
 		addblockstore = bstore.NewGCBlockstore(api.baseBlocks, api.blockstore)
@@ -94,7 +97,9 @@ func (api *UnixfsAPI) Add(ctx context.Context, files files.Node, opts ...options
 		pinning = node.Pinning
 	}
 
+	fmt.Println("before blockservice")
 	bserv := blockservice.New(addblockstore, exch) // hash security 001
+	fmt.Println("before dagservice")
 	dserv := dag.NewDAGService(bserv)
 
 	// add a sync call to the DagService
@@ -119,6 +124,7 @@ func (api *UnixfsAPI) Add(ctx context.Context, files files.Node, opts ...options
 		}
 	}
 
+	fmt.Println("before adder")
 	fileAdder, err := coreunix.NewAdder(ctx, pinning, addblockstore, syncDserv)
 	if err != nil {
 		return nil, err
@@ -144,6 +150,7 @@ func (api *UnixfsAPI) Add(ctx context.Context, files files.Node, opts ...options
 		return nil, fmt.Errorf("unknown layout: %d", settings.Layout)
 	}
 
+	fmt.Println("before inline")
 	if settings.Inline {
 		fileAdder.CidBuilder = cidutil.InlineBuilder{
 			Builder: fileAdder.CidBuilder,
@@ -164,6 +171,7 @@ func (api *UnixfsAPI) Add(ctx context.Context, files files.Node, opts ...options
 		fileAdder.SetMfsRoot(mr)
 	}
 
+	fmt.Println("before add all and pin")
 	nd, err := fileAdder.AddAllAndPin(files)
 	if err != nil {
 		return nil, err
