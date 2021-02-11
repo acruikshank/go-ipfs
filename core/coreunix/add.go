@@ -309,7 +309,9 @@ func (adder *Adder) AddAllAndPin(file files.Node) (ipld.Node, error) {
 
 		// Replace root with the first child
 		name = children[0]
+		fmt.Println("AddAllAndPin child")
 		root, err = rootdir.Child(name)
+		fmt.Println("AddAllAndPin child done")
 		if err != nil {
 			return nil, err
 		}
