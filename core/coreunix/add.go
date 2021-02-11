@@ -165,12 +165,14 @@ func (adder *Adder) PinRoot(root ipld.Node) error {
 
 	rnk := root.Cid()
 
+	fmt.Println("PinRoot dagService Add")
 	err := adder.dagService.Add(adder.ctx, root)
 	if err != nil {
 		return err
 	}
 
 	if adder.tempRoot.Defined() {
+		fmt.Println("PinRoot unpin")
 		err := adder.pinning.Unpin(adder.ctx, adder.tempRoot, true)
 		if err != nil {
 			return err
@@ -178,7 +180,9 @@ func (adder *Adder) PinRoot(root ipld.Node) error {
 		adder.tempRoot = rnk
 	}
 
+	fmt.Println("PinRoot PinWithMode")
 	adder.pinning.PinWithMode(rnk, pin.Recursive)
+	fmt.Println("PinRoot flush")
 	return adder.pinning.Flush(adder.ctx)
 }
 
@@ -256,27 +260,33 @@ func (adder *Adder) addNode(node ipld.Node, path string) error {
 // AddAllAndPin adds the given request's files and pin them.
 func (adder *Adder) AddAllAndPin(file files.Node) (ipld.Node, error) {
 	if adder.Pin {
+		fmt.Println("AddAllAndPin PinLock")
 		adder.unlocker = adder.gcLocker.PinLock()
 	}
 	defer func() {
+		fmt.Println("AddAllAndPin defer")
 		if adder.unlocker != nil {
 			adder.unlocker.Unlock()
 		}
 	}()
 
+	fmt.Println("AddAllAndPin addFileNode")
 	if err := adder.addFileNode("", file, true); err != nil {
 		return nil, err
 	}
 
 	// get root
+	fmt.Println("AddAllAndPin mfsRoot")
 	mr, err := adder.mfsRoot()
 	if err != nil {
 		return nil, err
 	}
 	var root mfs.FSNode
+	fmt.Println("AddAllAndPin getdir")
 	rootdir := mr.GetDirectory()
 	root = rootdir
 
+	fmt.Println("AddAllAndPin flush")
 	err = root.Flush()
 	if err != nil {
 		return nil, err
@@ -287,6 +297,7 @@ func (adder *Adder) AddAllAndPin(file files.Node) (ipld.Node, error) {
 	_, dir := file.(files.Directory)
 	var name string
 	if !dir {
+		fmt.Println("AddAllAndPin list names")
 		children, err := rootdir.ListNames(adder.ctx)
 		if err != nil {
 			return nil, err
@@ -304,23 +315,27 @@ func (adder *Adder) AddAllAndPin(file files.Node) (ipld.Node, error) {
 		}
 	}
 
+	fmt.Println("AddAllAndPin close")
 	err = mr.Close()
 	if err != nil {
 		return nil, err
 	}
 
+	fmt.Println("AddAllAndPin getnode")
 	nd, err := root.GetNode()
 	if err != nil {
 		return nil, err
 	}
 
 	// output directory events
+	fmt.Println("AddAllAndPin outputDirs")
 	err = adder.outputDirs(name, root)
 	if err != nil {
 		return nil, err
 	}
 
 	if asyncDagService, ok := adder.dagService.(syncer); ok {
+		fmt.Println("AddAllAndPin sync")
 		err = asyncDagService.Sync()
 		if err != nil {
 			return nil, err
@@ -330,6 +345,7 @@ func (adder *Adder) AddAllAndPin(file files.Node) (ipld.Node, error) {
 	if !adder.Pin {
 		return nd, nil
 	}
+	fmt.Println("AddAllAndPin PinRoot")
 	return nd, adder.PinRoot(nd)
 }
 
